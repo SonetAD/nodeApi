@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "start": "nodemon index.js",
+    "production": "mode=production nodemon index.js",
+    "stageing": "mode=stageing nodemon index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16"
+  }
+}
