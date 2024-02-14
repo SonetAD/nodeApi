@@ -2,6 +2,7 @@
 const { create, read, update, deleteFile } = require("../../lib/data");
 const { hash } = require("../../helpers/utilities");
 const { parseJson, verifyPass } = require("../../helpers/utilities");
+const { tokenVerifier } = require("./tokenhandler");
 
 const handler = {};
 // user handler
@@ -19,21 +20,29 @@ handler._user = {};
 // get method
 handler._user.get = (reqData, callBack) => {
   const { query } = reqData;
+  const { headers } = reqData;
+  const token = typeof headers.token === "string" ? headers.token : false;
   const fileName = typeof query["name"] === "string" ? query["name"] : null;
 
-  if (fileName) {
-    read(`users/${fileName}`, (err, data) => {
-      if (!err) {
-        const modData = parseJson(data);
-        delete modData.pass;
-        callBack(200, modData);
+  tokenVerifier(token, fileName, (tokenExist) => {
+    if (tokenExist) {
+      if (fileName) {
+        read(`users/${fileName}`, (err, data) => {
+          if (!err) {
+            const modData = parseJson(data);
+            delete modData.pass;
+            callBack(200, modData);
+          } else {
+            callBack(500, { error: "User does not exist" });
+          }
+        });
       } else {
-        callBack(500, { error: "User does not exist" });
+        callBack(405, { error: "No user name given" });
       }
-    });
-  } else {
-    callBack(405, { error: "No user name given" });
-  }
+    } else {
+      callBack(403, { error: "Authentication failure" });
+    }
+  });
 };
 // post method
 handler._user.post = (reqData, callBack) => {
@@ -77,49 +86,53 @@ handler._user.post = (reqData, callBack) => {
 handler._user.put = (reqData, callBack) => {
   const { query } = reqData;
   const fileName = typeof query["name"] === "string" ? query["name"] : null;
-  const name =
-    typeof reqData.body.name === "string" && reqData.body.name.trim().length > 0
-      ? reqData.body.name
-      : null;
 
-  const pass =
-    typeof reqData.body.pass === "string" && reqData.body.pass.trim().length > 0
-      ? reqData.body.pass
-      : null;
+  const { headers } = reqData;
+  const token = typeof headers.token === "string" ? headers.token : false;
 
-  const number =
-    typeof reqData.body.number === "string" &&
-    reqData.body.number.trim().length === 11
-      ? reqData.body.name
-      : null;
+  tokenVerifier(token, fileName, (tokenExist) => {
+    if (tokenExist) {
+      const name =
+        typeof reqData.body.name === "string" &&
+        reqData.body.name.trim().length > 0
+          ? reqData.body.name
+          : null;
 
-  const tos = typeof reqData.body.tos === "boolean" ? reqData.body.tos : null;
+      const pass =
+        typeof reqData.body.pass === "string" &&
+        reqData.body.pass.trim().length > 0
+          ? reqData.body.pass
+          : null;
 
-  read(`users/${fileName}`, (err, data) => {
-    if (!err) {
-      const jsonData = parseJson(data);
-      const savedPass = jsonData.pass;
+      const number =
+        typeof reqData.body.number === "string" &&
+        reqData.body.number.trim().length === 11
+          ? reqData.body.name
+          : null;
 
-      const verification = verifyPass(pass, savedPass);
-      if (verification) {
-        if (name && number && tos && pass && fileName) {
-          const userData = {
-            name,
-            number,
-            tos,
-            pass: hash(pass),
-          };
-          update(`users/${fileName}`, userData, (err) => {
-            if (!err) {
-              callBack(200, { message: "Successfully updated user info" });
-            } else {
-              callBack(500, { error: "Error updateing user info" });
-            }
-          });
-        }
+      if (name || number || pass) {
+        read(`users/${fileName}`, (err, data) => {
+          if (!err) {
+            const modUserData = parseJson(data);
+            const userData = {
+              name: name ? name : modUserData.name,
+              number: number ? number : modUserData.number,
+              pass: pass ? hash(pass) : modUserData.pass,
+            };
+            update(`users/${fileName}`, userData, (err) => {
+              if (!err) {
+                callBack(200, { message: "Successfully updated user info" });
+              } else {
+                callBack(500, { error: "Error updateing user info" });
+              }
+            });
+          }
+        });
       } else {
-        callBack(400, { error: "Wrong password" });
+        callBack(403, { error: "There is an error in your request" });
       }
+    } else {
+      callBack(403, { error: "Authentication error" });
     }
   });
 };
@@ -128,15 +141,24 @@ handler._user.put = (reqData, callBack) => {
 handler._user.delete = (reqData, callBack) => {
   const { query } = reqData;
   const fileName = typeof query["name"] === "string" ? query["name"] : null;
-  if (fileName) {
-    deleteFile(`users/${fileName}`, (err) => {
-      if (!err) {
-        callBack(200, { message: "Successfully deleted the user" });
-      } else {
-        callBack(500, { error: "Error happend deleting the user" });
+  const { headers } = reqData;
+  const token = typeof headers.token === "string" ? headers.token : false;
+
+  tokenVerifier(token, fileName, (tokenValid) => {
+    if (tokenValid) {
+      if (fileName) {
+        deleteFile(`users/${fileName}`, (err) => {
+          if (!err) {
+            callBack(200, { message: "Successfully deleted the user" });
+          } else {
+            callBack(500, { error: "Error happend deleting the user" });
+          }
+        });
       }
-    });
-  }
+    } else {
+      callBack(403, { error: "Authentication error" });
+    }
+  });
 };
 
 module.exports = handler;

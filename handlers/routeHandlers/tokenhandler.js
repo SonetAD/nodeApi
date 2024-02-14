@@ -6,6 +6,7 @@ const {
   parseJson,
   createRandomString,
 } = require("../../helpers/utilities");
+const { parse } = require("path");
 
 const handler = {};
 
@@ -144,5 +145,20 @@ handler._token.delete = (reqData, callBack) => {
       }
     });
   }
+};
+
+handler.tokenVerifier = (id, name, callBack) => {
+  read(`tokens/${id}`, (err, tokenData) => {
+    if (!err && tokenData) {
+      const modData = parseJson(tokenData);
+      if (modData.userName === name && modData.expires > Date.now()) {
+        callBack(true);
+      } else {
+        callBack(false);
+      }
+    } else {
+      callBack(false);
+    }
+  });
 };
 module.exports = handler;
