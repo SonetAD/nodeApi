@@ -11,7 +11,7 @@ handler.userHandler = (reqData, callBak) => {
   if (aceptedMethods.indexOf(reqData.method) > -1) {
     handler._user[reqData.method](reqData, callBak);
   } else {
-    callBak(405);
+    callBak(403, { error: "Method not supported" });
   }
 };
 
@@ -57,10 +57,7 @@ handler._user.post = (reqData, callBack) => {
       : null;
 
   const number =
-    typeof reqData.body.number === "string" &&
-    reqData.body.number.trim().length === 11
-      ? reqData.body.name
-      : null;
+    typeof reqData.body.number === "string" ? reqData.body.name : null;
 
   const tos = typeof reqData.body.tos === "boolean" ? reqData.body.tos : null;
 
@@ -80,6 +77,8 @@ handler._user.post = (reqData, callBack) => {
         });
       }
     });
+  } else {
+    callBack(403, { error: "Error in your request" });
   }
 };
 // put method

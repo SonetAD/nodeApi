@@ -15,7 +15,7 @@ handler.tokenHandler = (reqData, callBak) => {
   if (aceptedMethods.indexOf(reqData.method) > -1) {
     handler._token[reqData.method](reqData, callBak);
   } else {
-    callBak(405);
+    callBak(403, { eror: "Method not supported" });
   }
 };
 
